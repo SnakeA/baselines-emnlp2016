@@ -1,0 +1,52 @@
+# path to the root directory, https://github.com/grammatical/baselines-emnlp2016
+root: /home/angelos/baselines-emnlp2016/train
+
+dir:
+  moses: /home/angelos/mosesdecoder-gleu
+  moses_bin: /home/angelos/mosesdecoder-gleu/tools
+  # path to lazy decoder, https://github.com/kpu/lazy
+  lazy: /home/angelos/lazy
+  # path to NLTK data, http://www.nltk.org/data.html
+  nltk_data: /usr/local/share/nltk_data
+  # path to SRILM, http://www.speech.sri.com/projects/srilm/download.html
+  srilm: /home/angelos/srilm/bin/i686-m64
+
+experiment:
+  # path to working directory
+  dir: /path/to/workdir
+  cross: true
+  n: 4
+  # number of threads
+  jobs: 4
+
+features:
+  lm: true
+  lm2: true
+  wclm: true
+  osm: true
+  editops: true
+  sparse: false
+
+data:
+  # path to the NUCLE corpus, http://www.comp.nus.edu.sg/~nlp/conll14st.html#nucle32
+  train_m2: /mnt/nucle/nucle.m2
+  test2013_m2: /mnt/nucle/test2013.m2
+  test2014_m2: /mnt/nucle/test2014.m2
+
+  # path to the Lang8-NAIST corpus, http://cl.naist.jp/nldata/lang-8/
+  more_txt: /mnt/lang8/lang8.tok.txt
+  
+  # path to provided language model data
+  lm_path: "0:5:/mnt/commoncrawllm/cc.kenlm:8"
+  wclm_path: "1:9:/mnt/commoncrawllm/cc.wclm.kenlm:8"
+  lm_path2: "0:5:/mnt/wikilm/wiki.blm:8"
+  wc_path: /mnt/commoncrawllm/cc.classes.gz
+  tc_lm: /mnt/commoncrawllm/cc.kenlm
+
+tuning:
+  # allowed values: mert, pro, prostart, kbmirastart, bmira
+  algorithm: mert
+  remert: 5
+  max_it: 15
+  # number of MERT parallel jobs
+  mert_jobs: 4
