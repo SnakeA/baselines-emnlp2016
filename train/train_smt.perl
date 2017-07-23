@@ -25,6 +25,7 @@ my $LEVENSHTEIN = undef;
 my $EDITOPS     = undef;
 my $LM          = undef;
 my $LM2         = undef;
+my $LM3		= undef;
 my $OSM         = undef;
 my $ESM         = undef;
 my $WCLM        = undef;
@@ -55,6 +56,7 @@ GetOptions(
     "editops"         => \$EDITOPS,
     "lm=s"            => \$LM,
     "lm2=s"           => \$LM2,
+    "lm3=s"           => \$LM3,
     "osm"             => \$OSM,
     "esm"             => \$ESM,
     "wclm=s"          => \$WCLM,
@@ -208,6 +210,7 @@ if ( not all_exist(@PT_TEST) ) {
     $TRAIN_MODEL_COMMAND .= " --hmm-align" if ($HMM);
     $TRAIN_MODEL_COMMAND .= " --lm $LM"    if ($LM);
     $TRAIN_MODEL_COMMAND .= " --lm $LM2"   if ($LM2);
+    $TRAIN_MODEL_COMMAND .= " --lm $LM3"   if ($LM3);
     $TRAIN_MODEL_COMMAND .= " --lm $WCLM"  if ($WCLM);
 
     message("Creating translation model");
