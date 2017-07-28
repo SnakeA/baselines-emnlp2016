@@ -115,8 +115,8 @@ $TRAIN_OPTIONS .= " --srilm-dir " . $CONFIG->{dir}->{srilm};
 
 $TRAIN_OPTIONS .= " --editops"         if ($EDITOPS);
 $TRAIN_OPTIONS .= " --lm $PATH_LM"     if ($LM);
-$TRAIN_OPTIONS .= " --lm $PATH_LM2"    if ($LM2);
-$TRAIN_OPTIONS .= " --lm $PATH_LM3"    if ($LM3);
+$TRAIN_OPTIONS .= " --lm2 $PATH_LM2"   if ($LM2);
+$TRAIN_OPTIONS .= " --lm3 $PATH_LM3"   if ($LM3);
 $TRAIN_OPTIONS .= " --wclm $PATH_WCLM" if ($WCLM);
 $TRAIN_OPTIONS .= " --wc $PATH_WC"     if ($WCLM);
 $TRAIN_OPTIONS .= " --osm"             if ($OSM);
