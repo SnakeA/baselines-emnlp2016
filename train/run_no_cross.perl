@@ -39,6 +39,8 @@ die "Specify the working directory\n" unless $DIR;
 
 # features
 my $LM      = $CONFIG->{features}->{lm};
+my $LM2     = $CONFIG->{features}->{lm2};
+my $LM3     = $CONFIG->{features}->{lm3};
 my $WCLM    = $CONFIG->{features}->{wclm};
 my $OSM     = $CONFIG->{features}->{osm};
 my $ESM     = $CONFIG->{features}->{esm};
@@ -59,6 +61,8 @@ die "Specify the annotated training data in M2 format\n"
     if ( not $M2 or not -e $M2 );
 
 my $PATH_LM     = $CONFIG->{data}->{lm_path};
+my $PATH_LM2    = $CONFIG->{data}->{lm_path2};
+my $PATH_LM3    = $CONFIG->{data}->{lm_path3};
 my $PATH_WCLM   = $CONFIG->{data}->{wclm_path};
 my $PATH_WC     = $CONFIG->{data}->{wc_path};
 my $TRUECASE_LM = $CONFIG->{data}->{tc_lm};
@@ -111,6 +115,8 @@ $TRAIN_OPTIONS .= " --srilm-dir " . $CONFIG->{dir}->{srilm};
 
 $TRAIN_OPTIONS .= " --editops"         if ($EDITOPS);
 $TRAIN_OPTIONS .= " --lm $PATH_LM"     if ($LM);
+$TRAIN_OPTIONS .= " --lm $PATH_LM2"    if ($LM2);
+$TRAIN_OPTIONS .= " --lm $PATH_LM3"    if ($LM3);
 $TRAIN_OPTIONS .= " --wclm $PATH_WCLM" if ($WCLM);
 $TRAIN_OPTIONS .= " --wc $PATH_WC"     if ($WCLM);
 $TRAIN_OPTIONS .= " --osm"             if ($OSM);
