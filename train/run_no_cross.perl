@@ -155,7 +155,7 @@ else {
 if ($CROSS) {
     message("Splitting training data set into N-chunks");
     unless ( -s "$DIR/part.00" and -s "DIR/part." . sprintf( "%02d", $N ) ) {
-        my $lines = int( `wc -l $DIR/full.txt` / $N ) ;
+        my $lines = int( `wc -l $DIR/full.txt` / $N ) + 1;
         print $lines, "\n";
         `split -a 2 -d -l $lines $DIR/full.txt $DIR/part.`;
         `split -a 2 -d -l $lines $DIR/full.orig.txt $DIR/part.orig.`;
@@ -177,32 +177,35 @@ if ($CROSS) {
 
         foreach my $j ( 0 .. $N - 1 ) {
             my $j0 = sprintf( "%02d", $j );
-            if ( $j != $i ) {
-                `cat $DIR/part.$j0 >> $curr/train.txt`;
+            `cat $DIR/part.$j0 >> $curr/train.txt`;
+            
+            # Test set - Tuning set
+            my $TEST2013_MOSESTOK = "$DIR/" . basename($TEST2013) . ".mosestok";
+            `$SCRIPTS/m2_tok/convert_m2_tok.py -m $MOSESDIR $TEST2013 > $TEST2013_MOSESTOK`;
+            `cat $TEST2013_MOSESTOK | $SCRIPTS/make_parallel.perl > $DIR/tuning.txt`;
+
+            `cp $DIR/tuning.txt $curr/test.txt`           unless ( -e "$curr/test.txt" );
+            #`cp $DIR/part.orig.$j0 $curr/test.orig.txt` unless ( -e "$curr/test.orig.txt" );
+
+            my $lines = int( `wc -l $curr/test.txt` );
+            message("Lines in part.$j0: $lines\n");
+            `split -a 1 -d -l $lines $curr/test.txt $curr/test.`;
+            #`split -a 1 -d -l $lines $curr/test.orig.txt $curr/test.orig.`;
+
+            foreach my $k ( 0 .. $PARTS - 1 ) {
+                `cat $curr/test.$k | cut -f 1 | tee $curr/test.$k.err | $TRUECASE > $curr/test.lc.$k.err`
+                    unless ( -e "$curr/test.lc.$k.err" );
+                `cat $curr/test.$k | cut -f 2 | tee $curr/test.$k.cor | $TRUECASE > $curr/test.lc.$k.cor`
+                    unless ( -e "$curr/test.lc.$k.cor" );
+                # `cat $curr/test.orig.$k | cut -f 1 > $curr/test.orig.$k.err`
+                #     unless ( -e "$curr/test.orig.$k.err" );
+
+                `cat $curr/test.lc.$k.err | $SCRIPTS/ann_from_txt.perl $TEST2013_MOSESTOK > $curr/test.lc.$k.m2`
+                    unless ( -e "$curr/test.lc.$k.m2" );
+                # `cat $curr/test.orig.$k.err | $SCRIPTS/ann_from_txt.perl $M2 > $curr/test.$k.m2`
+                #     unless ( -e "$curr/test.$k.m2" );
             }
-            else {
-                `cp $DIR/part.$j0 $curr/test.txt`           unless ( -e "$curr/test.txt" );
-                `cp $DIR/part.orig.$j0 $curr/test.orig.txt` unless ( -e "$curr/test.orig.txt" );
-
-                my $lines = int( `wc -l $curr/test.txt` / $PARTS ) + 1;
-                message("Lines in part.$j0: $lines\n");
-                `split -a 1 -d -l $lines $curr/test.txt $curr/test.`;
-                `split -a 1 -d -l $lines $curr/test.orig.txt $curr/test.orig.`;
-
-                foreach my $k ( 0 .. $PARTS - 1 ) {
-                    `cat $curr/test.$k | cut -f 1 | tee $curr/test.$k.err | $TRUECASE > $curr/test.lc.$k.err`
-                        unless ( -e "$curr/test.lc.$k.err" );
-                    `cat $curr/test.$k | cut -f 2 | tee $curr/test.$k.cor | $TRUECASE > $curr/test.lc.$k.cor`
-                        unless ( -e "$curr/test.lc.$k.cor" );
-                    `cat $curr/test.orig.$k | cut -f 1 > $curr/test.orig.$k.err`
-                        unless ( -e "$curr/test.orig.$k.err" );
-
-                    `cat $curr/test.lc.$k.err | $SCRIPTS/ann_from_txt.perl $M2_MOSESTOK > $curr/test.lc.$k.m2`
-                        unless ( -e "$curr/test.lc.$k.m2" );
-                    `cat $curr/test.orig.$k.err | $SCRIPTS/ann_from_txt.perl $M2 > $curr/test.$k.m2`
-                        unless ( -e "$curr/test.$k.m2" );
-                }
-            }
+            
         }
 
         `cat $curr/test.?.err > $curr/test.err`;
@@ -241,6 +244,331 @@ if ($CROSS) {
     }
     $pm->wait_all_children();
 }
+
+###############################################################################
+# Prepare release
+
+message("Preparing release models");
+my $RDIR = "$DIR/release";
+`mkdir -p $RDIR`;
+
+if ( not -e "$RDIR/train.lc.cor" ) {
+    `cat $DIR/full.txt > $RDIR/train.txt`;
+
+    # @MORE_RELEASE = @MORE if ( @MORE and not @MORE_RELEASE );
+    # foreach my $MORE (@MORE_RELEASE) {
+    #     message("Adding more training data: $MORE");
+    #     die if ( not -s $MORE );
+    #     `cat $MORE >> $RDIR/train.txt`;
+    # }
+
+    `cat $RDIR/train.txt | cut -f 1 | tee $RDIR/train.err | $TRUECASE > $RDIR/train.lc.err`;
+    `cat $RDIR/train.txt | cut -f 2 | tee $RDIR/train.cor | $TRUECASE > $RDIR/train.lc.cor`;
+}
+
+###############################################################################
+# Prepare test sets
+
+my $FILTER = "";
+
+# if ( -s $TEST2013 ) {
+#     message("Preparing test2013 evaluation set");
+#     prepare_test_set( "test2013", $TEST2013, $RDIR );
+#     $FILTER .= " --filter $RDIR/test2013.lc.err";
+# }
+if ( -s $TEST2014 ) {
+    message("Preparing test2014 evaluation set");
+    prepare_test_set( "test2014", $TEST2014, $RDIR );
+    $FILTER .= " --filter $RDIR/test2014.lc.err";
+}
+
+if ( not -s "$RDIR/work.err-cor/binmodel.err-cor/moses.ini" ) {
+    message("Running translation model training for release");
+
+    my $TRAIN_RELEASE
+        = "$ROOT/train_smt.perl $TRAIN_OPTIONS"
+        . $FILTER
+        . " -w $RDIR/work.err-cor -c $RDIR/train.lc"
+        . " --log $RDIR/log.txt";
+    execute($TRAIN_RELEASE);
+
+    if ($SPARSE) {
+        `cp $DIR/cross.00/work.err-cor/binmodel.err-cor/moses.mert.ini.sparse $DIR/release/work.err-cor/binmodel.err-cor/moses.mert.ini.sparse`;
+    }
+}
+
+# if ( -s $TEST2013 ) {
+#     message("Evaluating test2013 before tuning");
+#     print translate_test_set("test2013", "moses.ini", "nomert", "standard weights");
+# }
+
+if ( -s $TEST2014 ) {
+    message("Evaluating test2014 before tuning");
+    print translate_test_set("test2014", "moses.ini", "nomert", "standard weights");
+}
+
+if ($REMERT) {
+    if ( $MER_ADJUST and $CROSS) {
+        my $mer = new Parallel::ForkManager($JOBS);
+        foreach my $i ( 0 .. $N - 1 ) {
+            $mer->start() and next;
+
+            my $i0 = sprintf( "%02d", $i );
+            my $abscurr = File::Spec->rel2abs("$DIR/cross.$i0");
+
+            for my $k ( 0 .. $PARTS - 1 ) {
+                if ( not -s "$abscurr/test.lc.$k.mer.err" or not -s "$abscurr/test.lc.$k.mer.cor" ) {
+                    message("Adjusting MER in chunk $i0");
+
+                    my $mercmd
+                        = "$SCRIPTS/greedy_mer.perl --mer $MER_ADJUST"
+                        . " --m2in $abscurr/test.lc.$k.m2"
+                        . " --errout $abscurr/test.lc.$k.mer.err --corout $abscurr/test.lc.$k.mer.cor"
+                        . " --m2out $abscurr/test.lc.$k.mer.m2";
+                    execute($mercmd);
+
+                    execute("cat $abscurr/test.lc.$k.mer.err | $TRUECASE > $abscurr/test.lc.$k.mer.err.temp");
+                    execute("cat $abscurr/test.lc.$k.mer.cor | $TRUECASE > $abscurr/test.lc.$k.mer.cor.temp");
+
+                    execute("mv $abscurr/test.lc.$k.mer.err.temp $abscurr/test.lc.$k.mer.err");
+                    execute("mv $abscurr/test.lc.$k.mer.cor.temp $abscurr/test.lc.$k.mer.cor");
+                }
+            }
+            $mer->finish();
+        }
+        $mer->wait_all_children();
+    }
+
+    my $rm = new Parallel::ForkManager($JOBS);
+    foreach my $IT ( 1 .. $REMERT ) {
+        message("Remerting #$IT");
+
+        $rm->start() and next;
+        my $infix = ".$IT";
+
+        if (not -s "$RDIR/work.err-cor/binmodel.err-cor/moses.mert$infix.ini") {
+            if ($CROSS) {
+                my $pmm = new Parallel::ForkManager($MERT_JOBS);
+                my $run = $IT;
+                foreach my $i ( 0 .. $N - 1 ) {
+                    $pmm->start() and next;
+
+                    my $i0 = sprintf( "%02d", $i );
+                    my $curr = "$DIR/cross.$i0";
+
+                    message("Optimizing chunk $i parameter weights, run $run");
+
+                    my $pmz = new Parallel::ForkManager($PARTS);
+                    for my $k ( 0 .. $PARTS - 1 ) {
+                        $pmz->start() and next;
+
+                        if (not -e "$curr/work.err-cor/binmodel.err-cor/moses.mert.$k.$run.ini") {
+                            if (-e "$curr/work.err-cor/tuning.$k.$run/moses.ini") {
+                                `cp $curr/work.err-cor/tuning.$k.$run/moses.ini $curr/work.err-cor/binmodel.err-cor/moses.mert.$k.$run.ini`;
+                            }
+                            else {
+                                `rm -rf $curr/work.err-cor/tuning.$k.$run/*` unless ($CONTINUE);
+
+                                my $abscurr = File::Spec->rel2abs($curr);
+
+                                my $MERT = "perl $MOSESDIR/scripts/training/mert-moses.pl";
+                                if ($MER_ADJUST) {
+                                    if ($WCINPUT) {
+                                        execute("cat $abscurr/test.lc.$k.mer.err $WC_FACT > $abscurr/test.lc.$k.mer.err.fact");
+                                        $MERT .= " $abscurr/test.lc.$k.mer.err.fact";
+                                    }
+                                    else {
+                                        $MERT .= " $abscurr/test.lc.$k.mer.err";
+                                    }
+
+                                    $MERT .= ($BLEU) ? " $abscurr/test.lc.$k.mer.cor" : " $abscurr/test.lc.$k.mer.m2";
+                                }
+                                else {
+                                    $MERT .= " $abscurr/test.lc.$k.err";
+                                    $MERT .= ($BLEU) ? " $abscurr/test.lc.$k.cor" : " $abscurr/test.lc.$k.m2";
+                                }
+
+                                my $SCORER = "M2SCORER";
+                                my $SCCONFIG = "beta:$BETA,max_unchanged_words:2,case:false";
+
+                                if ($BLEU) {
+                                    $SCORER   = "BLEU";
+                                    $SCCONFIG = "case:false";
+                                }
+
+                                $MERT
+                                    .= " $MOSESDECODER $abscurr/work.err-cor/binmodel.err-cor/moses.ini"
+                                    . " --working-dir=$abscurr/work.err-cor/tuning.$k.$run"
+                                    . " --mertdir=$MOSESDIR/bin"
+                                    . " --mertargs \"--sctype $SCORER\"" # --scconfig $SCCONFIG\""
+                                    . " --no-filter-phrase-table"
+                                    . " --nbest=100"
+                                    . " --threads 16 --decoder-flags \"-threads 16 -fd '$FACTOR_DELIMITER'\""
+                                    . " --maximum-iterations $MAXIT";
+
+                                if ($CONTINUE) {
+                                    $MERT .= " --continue";
+                                }
+
+                                if ($PRO) {
+                                    $MERT .= " --pairwise-ranked --return-best-dev";
+                                }
+                                elsif ($BMIRA) {
+                                    $MERT .= " --batch-mira --return-best-dev"
+                                        . " --batch-mira-args \"--sctype $SCORER --scconfig $SCCONFIG --model-bg -D 0.001\"";
+                                }
+                                elsif ($PROSTART) {
+                                    $MERT .= " --pro-starting-point --return-best-dev";
+                                }
+                                elsif ($KBMIRASTART) {
+                                    $MERT .= " --kbmira-starting-point --return-best-dev"
+                                        . " --batch-mira-args \"--sctype $SCORER --scconfig $SCCONFIG\"";
+                                }
+
+                                execute($MERT);
+
+                                # Failsafe for insane kbmira behaviour, resets last two iterations, restarts computations
+                                if ($BMIRA) {
+                                    my $finished_step = int(`cat $abscurr/work.err-cor/tuning.$k.$run/finished_step.txt`);
+                                    my $repeat = 0;
+                                    while ( $finished_step < $MAXIT and $repeat < 3 ) {
+                                        my $prev1 = $finished_step;
+                                        my $prev2 = $finished_step - 1;
+                                        $finished_step = $finished_step - 2;
+
+                                        my $BAC = "$abscurr/work.err-cor/tuning.$k.$run/failed." . time();
+                                        execute("mkdir -p $BAC");
+                                        execute("mv $abscurr/work.err-cor/tuning.$k.$run/run$prev1.* $BAC/.");
+                                        execute("mv $abscurr/work.err-cor/tuning.$k.$run/run$prev2.* $BAC/.");
+                                        execute("mv $abscurr/work.err-cor/tuning.$k.$run/moses.ini $BAC/.");
+                                        execute("cp $BAC/run$prev2.sparse-weights $abscurr/work.err-cor/tuning.$k.$run/.");
+                                        execute("echo $finished_step > $abscurr/work.err-cor/tuning.$k.$run/finished_step.txt");
+
+                                        execute("$MERT --continue");
+
+                                        $finished_step = int(`cat $abscurr/work.err-cor/tuning.$k.$run/finished_step.txt`);
+                                        $repeat++;
+                                    }
+                                }
+
+                                `cp $curr/work.err-cor/tuning.$k.$run/moses.ini $curr/work.err-cor/binmodel.err-cor/moses.mert.$k.$run.ini`;
+                            }
+                        }
+                        $pmz->finish() and next;
+                    }
+                    $pmz->wait_all_children();
+                    $pmm->finish();
+                }
+                $pmm->wait_all_children();
+
+                `$SCRIPTS/centroid.perl -d $DIR -i $IT`;
+                my $cmd_reuse = "perl $SCRIPTS/reuse-weights.perl"
+                    . " $DIR/cross.00/work.err-cor/binmodel.err-cor/moses.mert$infix.ini"
+                    . " < $RDIR/work.err-cor/binmodel.err-cor/moses.ini"
+                    . " > $RDIR/work.err-cor/binmodel.err-cor/moses.mert$infix.ini";
+                execute($cmd_reuse);
+
+                if ($SPARSE) {
+                    `cp $DIR/cross.00/work.err-cor/binmodel.err-cor/moses.mert$infix.ini.sparse $DIR/release/work.err-cor/binmodel.err-cor/moses.mert$infix.ini.sparse`;
+                    add_sparse(
+                        "$RDIR/work.err-cor/binmodel.err-cor/moses.mert$infix.ini",
+                        "$DIR/release/work.err-cor/binmodel.err-cor/moses.mert$infix.ini.sparse"
+                    );
+                }
+
+            }
+            elsif ( -s $TEST2013 ) {
+                my $SCORER   = "M2SCORER";
+                my $SCCONFIG = "beta:$BETA,max_unchanged_words:2";
+
+                if ($BLEU) {
+                    $SCORER   = "BLEU";
+                    $SCCONFIG = "case:false";
+                }
+
+                my $MERT = "perl $MOSESDIR/scripts/training/mert-moses.pl";
+                $MERT .= " $RDIR/test2013.lc.err";
+
+                $MERT .= ($BLEU) ? " $RDIR/test2013.lc.cor" : " $RDIR/test2013.m2.mosestok";
+
+                $MERT
+                    .= " $MOSESDECODER $RDIR/work.err-cor/binmodel.err-cor/moses.ini"
+                    . " --working-dir=$RDIR/work.err-cor/tuning$infix"
+                    . " --mertdir=$MOSESDIR/bin"
+                    . " --mertargs \"--sctype $SCORER --scconfig $SCCONFIG\""
+                    . " --no-filter-phrase-table"
+                    . " --nbest=100 --range VW0:0..1"
+                    . " --threads 16 --decoder-flags \"-threads 16 -fd '$FACTOR_DELIMITER'\""
+                    . " --maximum-iterations $MAXIT";
+
+                if ($CONTINUE) {
+                    $MERT .= " --continue";
+                }
+
+                if ($PRO) {
+                    $MERT .= " --pairwise-ranked --return-best-dev";
+                }
+                elsif ($BMIRA) {
+                    $MERT .= " --batch-mira --return-best-dev"
+                        . " --batch-mira-args \"--sctype $SCORER --scconfig $SCCONFIG\"";
+                }
+                elsif ($PROSTART) {
+                    $MERT .= " --pro-starting-point --return-best-dev";
+                }
+                elsif ($KBMIRASTART) {
+                    $MERT .= " --kbmira-starting-point --return-best-dev"
+                        . " --batch-mira-args \"--sctype $SCORER --scconfig $SCCONFIG\"";
+                }
+
+                execute($MERT);
+                `cp $RDIR/work.err-cor/tuning$infix/moses.ini $RDIR/work.err-cor/binmodel.err-cor/moses.mert$infix.ini`;
+            }
+        }
+
+        # if ( -s $TEST2013 ) {
+        #     message("Evaluating test2013 after tuning$infix");
+        #     print translate_test_set(
+        #         "test2013",   "moses.mert$infix.ini",
+        #         "mert$infix", "optimized weights ($IT)"
+        #     );
+        # }
+
+        if ( -s $TEST2014 ) {
+            message("Evaluating test2014 after tuning$infix");
+            print translate_test_set("test2014",   "moses.mert$infix.ini", "mert$infix", "optimized weights ($IT)");
+        }
+        $rm->finish();
+    }
+    $rm->wait_all_children();
+    $CONTINUE = 0;
+}
+
+if ( $REMERT > 1 ) {
+    my $infix = ".avg";
+    my $inis  = join( " ", grep {/moses\.mert\.\d+\.ini/} <$RDIR/work.err-cor/binmodel.err-cor/moses.mert.*.ini> );
+
+    `perl $SCRIPTS/centroid2.perl $inis $RDIR/work.err-cor/binmodel.err-cor/moses.mert$infix.ini`;
+
+    # if ( -s $TEST2013 ) {
+    #     message("Evaluating test2013 after tuning$infix");
+    #     print translate_test_set("test2013",   "moses.mert$infix.ini", "mert$infix", "optimized weights (final)");
+
+    #     my $evals = join( " ", grep {/eval\.test2013\.mert\.\d+\.txt/} <$RDIR/eval.*.txt> );
+    #     `perl $SCRIPTS/stats.perl $evals > $RDIR/eval.test2013.avg.stats.txt`;
+    #     print `cat $RDIR/eval.test2013.avg.stats.txt`;
+
+    # }
+
+    if ( -s $TEST2014 ) {
+        message("Evaluating test2014 after tuning$infix");
+        print translate_test_set("test2014",   "moses.mert$infix.ini", "mert$infix", "optimized weights (final)");
+
+        my $evals = join( " ", grep {/eval\.test2014\.mert\.\d+\.txt/} <$RDIR/eval.*.txt> );
+        `perl $SCRIPTS/stats.perl $evals > $RDIR/eval.test2014.avg.stats.txt`;
+        print `cat $RDIR/eval.test2014.avg.stats.txt`;
+    }
+}
+
 ###############################################################################
 # Helper functions
 
@@ -377,3 +705,4 @@ sub message {
     my $log_message = $time . "\t$message\n";
     print STDERR $log_message;
 }
+
