@@ -217,11 +217,11 @@ if ($CROSS) {
         `cat $curr/test.?.err > $curr/test.err`;
         `cat $curr/test.lc.?.err > $curr/test.lc.err`;
 
-        # foreach my $MORE (@MORE) {
-        #     message("Adding more training data: $MORE");
-        #     die if not( -s $MORE );
-        #     `cat $MORE >> $curr/train.txt`;
-        # }
+        foreach my $MORE (@MORE) {
+            message("Adding more training data: $MORE");
+            #die if not( -s $MORE );
+            `cat $MORE >> $curr/train.txt`;
+        }
         execute("cat $curr/train.txt | cut -f 1 | perl -pe 's/^\\s+|\\s+\$//g; \$_ = \"\$_\\n\"' | tee $curr/train.err | $TRUECASE > $curr/train.lc.err")
             unless ( -e "$curr/train.lc.err" );
         execute("cat $curr/train.txt | cut -f 2 | perl -pe 's/^\\s+|\\s+\$//g; \$_ = \"\$_\\n\"' | tee $curr/train.cor | $TRUECASE > $curr/train.lc.cor")
@@ -261,12 +261,12 @@ my $RDIR = "$DIR/release";
 if ( not -e "$RDIR/train.lc.cor" ) {
     `cat $DIR/full.txt > $RDIR/train.txt`;
 
-    # @MORE_RELEASE = @MORE if ( @MORE and not @MORE_RELEASE );
-    # foreach my $MORE (@MORE_RELEASE) {
-    #     message("Adding more training data: $MORE");
-    #     die if ( not -s $MORE );
-    #     `cat $MORE >> $RDIR/train.txt`;
-    # }
+    @MORE_RELEASE = @MORE if ( @MORE and not @MORE_RELEASE );
+    foreach my $MORE (@MORE_RELEASE) {
+        message("Adding more training data: $MORE");
+        #die if ( not -s $MORE );
+        `cat $MORE >> $RDIR/train.txt`;
+    }
 
     `cat $RDIR/train.txt | cut -f 1 | tee $RDIR/train.err | $TRUECASE > $RDIR/train.lc.err`;
     `cat $RDIR/train.txt | cut -f 2 | tee $RDIR/train.cor | $TRUECASE > $RDIR/train.lc.cor`;
