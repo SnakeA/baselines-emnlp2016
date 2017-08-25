@@ -1,3 +1,33 @@
+Angelos Constantinides, 2017
+Domain Adaptation for Grammatical Error Correction 
+
+This repository(https://github.com/SnakeA/baselines-emnlp2016/) is a clone of Junczys-Dowmunt and Grundkiewicz (2016) repository (https://github.com/grammatical/baselines-emnlp2016)
+We modified (or created) the following files in order to support multiple langugage models as features, hold-out validation and tuning on ConLL-2013 test set:
+
+-- train/run_cross.perl
+----------------------------------------------------------------------------------------------- 
+This perl script was implemented by Junczys-Dowmunt and Grundkiewicz (2016). It supported a limited number of language models. We modified it (as we explained in the Implementation section of our thesis) in order to support up to three extra language models. As shown in the README under the train directory the script is used as a wrapper to the train/train_smt.perl script in order to train a model using a cross-validation approach. In order to run it a configuration file needs to be input and the output under the specified directory will contain the trained model (moses.ini).
+
+To run this : ./run_cross.perl -f config.dense.yml -d model.dense
+where config.dense.yml is the configuration file and model.dense the output directory. There are various configuration file examples under train dir.
+
+-- train/run_no_cross.perl
+----------------------------------------------------------------------------------------------- 
+This perl script was implemented by me (Angelos Constantinides) and it a modified version of run_cross.perl, although as the name suggests it does not perform cross-validation but instead hold-out validation using the file specified under test-2013 variable in the configuration. It supports up to three language models. We modified it (as we explained in the Implementation section of our thesis) in order to support up to three extra language models. In order to run it a configuration file needs to be input (although the n variable under experiment should be set to 1, see config_No_CC.yml example). Similarly with run_cross.perl the output under the specified directory will contain the trained model (moses.ini).
+
+To run this : ./run_no_cross.perl -f config.dense.yml -d model.dense
+where config.dense.yml is the configuration file and model.dense the output directory. A hold out validation example configuration is found at train/config_No_CC.yml
+
+-- train/train_smt.perl
+----------------------------------------------------------------------------------------------- 
+This perl script was implemented by Junczys-Dowmunt and Grundkiewicz (2016). This is the script that actually performs the training by calling the Moses training script. This is the heart of training and it is used by both run_no_cross.perl and run_cross.perl. We had to refactor it (as we explained in the Implementation section of our thesis) in order to accpet up to three language models - as this is called by the aforementioned scripts.
+
+-----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------- 
+Other than the aforementioned files, the rest were kept as they were, and some are explaine in Junczys-Dowmunt and Grundkiewicz (2016) repository's README, as shown below
+
+===============================================================================================
+===============================================================================================
 Phrase-based Machine Translation is State-of-the-Art for Automatic Grammatical Error Correction
 ===============================================================================================
 
